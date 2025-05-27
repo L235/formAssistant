@@ -106,6 +106,7 @@
 
         /* ---------- 2. Render form ----------------------------------- */
         function renderForm(cfg) {
+        	$('#firstHeading').empty();
             var $content = $('#mw-content-text').empty();
             if (cfg.title) $content.append($('<h2>').text(cfg.title));
 
