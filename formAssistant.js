@@ -84,18 +84,18 @@
         }).then(function (data) {
             var page = data.query.pages[0];
             if (!page.revisions) {
-                console.error('[MultiForm] Config page missing or empty');
+                console.error('[formFiller.js] Config page missing or empty');
                 return;
             }
             var raw = page.revisions[0].content;
             var cfg;
             try { cfg = JSON.parse(raw); }
-            catch (e) { console.error('[MultiForm] JSON parse error:', e); return; }
+            catch (e) { console.error('[formFiller.js] JSON parse error:', e); return; }
 
             var current = mw.config.get('wgPageName').replace(/_/g, ' ');
             var formCfg = matchForm(cfg, current);
             if (formCfg) renderForm(formCfg);
-        }).fail(function (err) { console.error('[MultiForm] API error:', err); });
+        }).fail(function (err) { console.error('[formFiller.js] API error:', err); });
 
         /* ---------- helper: find config for this page ---------------- */
         function matchForm(cfg, page) {
@@ -143,7 +143,7 @@
                     return;
                 case 'static':
                 case 'html':
-                    var $ph = $('<div class="multiform-placeholder"></div>');
+                    var $ph = $('<div class="formfiller-placeholder"></div>');
                     $form.append($ph); // preserves ordering
                     parseWikitext(q.html || q.text || '').then(function (html) {
                         $ph.replaceWith($(html));
@@ -192,7 +192,7 @@
                     });
                     break;
                 default:
-                    console.warn('[MultiForm] Unsupported field type:', q.type);
+                    console.warn('[formFiller.js] Unsupported field type:', q.type);
                     return;
             }
 
@@ -275,7 +275,7 @@
             var editParams = {
                 action: 'edit',
                 title: targetPage,
-                summary: cfg.editSummary || (cfg.prepend ? 'Prepend answers via multi‑form script' : 'Append answers via multi‑form script')
+                summary: cfg.editSummary || (cfg.prepend ? 'Prepend answers via [[User:L235/formFiller.js|formFiller.js]]' : 'Append answers via [[User:L235/formFiller.js|formFiller.js]]')
             };
             
             if (cfg.prepend) {
@@ -288,7 +288,7 @@
                 mw.notify('Saved!', { type: 'success' });
                 $form[0].reset();
             }).fail(function (err) {
-                console.error('[MultiForm] Edit error:', err);
+                console.error('[formFiller.js] Edit error:', err);
                 mw.notify('Error: ' + err, { type: 'error', autoHide: false });
             }).always(function () {
                 $submit.prop('disabled', false).val('Submit');
