@@ -6,6 +6,7 @@
         "title": "Demo survey",
         "instructions": "Please fill the survey. Fields marked required.",
         "targetPage": "User:L235/sandbox2",
+        "prepend": false,
         "template": { "name": "User:L235/TestTemplate", "subst": true },
         "questions": [
           { "label": "Question A", "type": "text", "templateParam": "1", "default": "foo" },
@@ -19,6 +20,18 @@
         ]
       }
     }
+
+    **Target page variables:**
+    - {{USERNAME}} - Current user's username
+    - {{FIELD:templateParam}} - Value from form field (use templateParam as identifier)
+    
+    **Form options:**
+    - "prepend": true/false - Whether to prepend (true) or append (false, default) to target page
+    
+    Examples:
+    - "targetPage": "User talk:{{USERNAME}}" - Posts to current user's talk page
+    - "targetPage": "User:{{FIELD:1}}/requests" - Uses value from templateParam "1"
+    - "prepend": true - Adds content to top of page instead of bottom
 */
 /* global mw, $ */
 (function () {
@@ -198,6 +211,21 @@
             $form.append($label.append($field)).append('<br><br>');
         }
 
+        /* ---------- helper: resolve target page variables ----------- */
+        function resolveTargetPage(targetPage, formData) {
+            if (!targetPage || typeof targetPage !== 'string') return targetPage;
+            
+            // Replace {{USERNAME}} with current user
+            var resolved = targetPage.replace(/\{\{USERNAME\}\}/g, mw.config.get('wgUserName') || '');
+            
+            // Replace {{FIELD:fieldname}} with form field values
+            resolved = resolved.replace(/\{\{FIELD:([^}]+)\}\}/g, function(match, fieldName) {
+                return formData[fieldName] || match;
+            });
+            
+            return resolved;
+        }
+
         /* ---------- 3. Submission ------------------------------------ */
         function valueOf($form, q) {
             var sel = '[name="' + q._fieldName + '"]';
@@ -212,6 +240,14 @@
         }
 
         function submit($form, cfg, $submit) {
+            // Collect all form data for target page resolution
+            var formData = {};
+            (cfg.questions || []).forEach(function (q) {
+                if (q.templateParam) {
+                    formData[q.templateParam] = valueOf($form, q);
+                }
+            });
+
             // Custom validation for required checkbox groups
             var missing = (cfg.questions || []).filter(function (q) {
                 if (!q.required) return false;
@@ -230,11 +266,25 @@
             if (cfg.template && cfg.template.subst) tpl = 'subst:' + tpl;
             var wikitext = '\n{{' + tpl + params + '}}\n';
 
+            // Resolve target page with variables
+            var targetPage = resolveTargetPage(cfg.targetPage, formData);
+
             $submit.prop('disabled', true).val('Submitting…');
-            api.postWithToken('csrf', {
-                action: 'edit', title: cfg.targetPage, appendtext: wikitext,
-                summary: cfg.editSummary || 'Append answers via multi‑form script'
-            }).done(function () {
+            
+            // Determine edit parameters based on prepend option
+            var editParams = {
+                action: 'edit',
+                title: targetPage,
+                summary: cfg.editSummary || (cfg.prepend ? 'Prepend answers via multi‑form script' : 'Append answers via multi‑form script')
+            };
+            
+            if (cfg.prepend) {
+                editParams.prependtext = wikitext;
+            } else {
+                editParams.appendtext = wikitext;
+            }
+            
+            api.postWithToken('csrf', editParams).done(function () {
                 mw.notify('Saved!', { type: 'success' });
                 $form[0].reset();
             }).fail(function (err) {
