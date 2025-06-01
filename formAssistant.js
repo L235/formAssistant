@@ -213,7 +213,13 @@
                         var $l = $('<label>');
                         var $cb = $('<input>').attr({ type: 'checkbox', name: safeName, value: opt });
                         if (defs.includes(opt)) $cb.prop('checked', true);
-                        $l.append($cb, ' ', opt, '\u00A0');
+                        $l.append($cb, ' ', opt);
+                        // Add line break if vertical layout is requested
+                        if (q.vertical) {
+                            $l.append('<br>');
+                        } else {
+                            $l.append('\u00A0'); // non-breaking space for horizontal layout
+                        }
                         $field.append($l);
                     });
                     break;
