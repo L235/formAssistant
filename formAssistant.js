@@ -1,10 +1,12 @@
 /*  [[Mediawiki:Form-assistant.js]]
-    @author: L235 (https://en.wikipedia.org/wiki/User:L235)
+    @author: L235 ([[User:L235]])
 
     This script is a form assistant that allows users to submit forms on Wikipedia pages, 
     the answers to which are then posted to a target page.
 
     Data is stored in a JSON file found at [[Mediawiki:Form-assistant.js/config.json]].
+
+    The form assistant is only available on the [[Wikipedia:Form assistant/Run]] page.
 
     **JSON schema (examples)**
 
@@ -43,9 +45,18 @@
 */
 /* global mw, $ */
 (function () {
-    var CONFIG_PAGE = 'User:L235/form-config.json';
+    var CONFIG_PAGE = 'Mediawiki:Form-assistant.js/config.json';
+    var ALLOWED_BASE_PAGE = 'Wikipedia:Form assistant/Run';
 
     mw.loader.using(['mediawiki.api', 'oojs-ui']).then(function () {
+        // Abort early if not on the permitted base page
+        var fullPageTitle = mw.config.get('wgPageName').replace(/_/g, ' '); // keeps spaces
+        var basePageTitle = fullPageTitle.split('#')[0]; // drop fragment if any
+        if (basePageTitle !== ALLOWED_BASE_PAGE) {
+            console.log('[Form-assistant.js] Not on the permitted base page');
+            return; // Silently exit – nothing to do here
+        }
+
         var api = new mw.Api();
 
         /* ---------- internal‑field counter ------------------------ */
@@ -87,8 +98,13 @@
             try { cfg = JSON.parse(raw); }
             catch (e) { console.error('[Form-assistant.js] JSON parse error:', e); return; }
 
-            var current = mw.config.get('wgPageName').replace(/_/g, ' ');
-            var formCfg = matchForm(cfg, current);
+            // Derive current page key, supporting #section fragments
+            var pageTitle = mw.config.get('wgPageName').replace(/_/g, ' ');
+            var fragment = (window.location.hash || '').slice(1); // keep underscores
+            var currentFull = fragment ? pageTitle + '#' + fragment : pageTitle;
+
+            // Attempt exact match with fragment first, then without
+            var formCfg = matchForm(cfg, currentFull) || matchForm(cfg, pageTitle);
             if (formCfg) renderForm(formCfg);
         }).fail(function (err) { console.error('[Form-assistant.js] API error:', err); });
 
@@ -101,7 +117,7 @@
 
         /* ---------- 2. Render form ----------------------------------- */
         function renderForm(cfg) {
-        	$('#firstHeading').empty();
+            $('#firstHeading').empty();
             var $content = $('#mw-content-text').empty();
             if (cfg.title) $content.append($('<h2>').text(cfg.title));
 
@@ -119,7 +135,7 @@
                 var $form = $('<form>').appendTo($content);
                 (cfg.questions || []).forEach(function (q) { insertItem($form, q); });
 
-                $form.append('<br>');
+                // Removed extra <br> before submit to tighten spacing
                 var $submit = $('<input>').attr({ type: 'submit', value: 'Submit' });
                 $form.append($submit);
                 $form.on('submit', function (e) {
@@ -204,7 +220,8 @@
                 $label.attr('id', fieldId + '_lbl');
             }
 
-            $form.append($label.append($field)).append('<br><br>');
+            // Insert a space between the question label and field for visual clarity
+            $form.append($label.append(' ', $field)).append('<br><br>');
         }
 
         /* ---------- helper: resolve target page variables ----------- */
