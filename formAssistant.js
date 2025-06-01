@@ -1,5 +1,5 @@
 /*  [[Mediawiki:Form-assistant.js]]
-    @author: L235 (https://en.wikipedia.org/wiki/User:L235)
+    @author: L235 ([[User:L235]])
 
     This script is a form assistant that allows users to submit forms on Wikipedia pages, 
     the answers to which are then posted to a target page.
@@ -45,7 +45,7 @@
 */
 /* global mw, $ */
 (function () {
-    var CONFIG_PAGE = 'User:L235/form-config.json';
+    var CONFIG_PAGE = 'Mediawiki:Form-assistant.js/config.json';
     var ALLOWED_BASE_PAGE = 'Wikipedia:Form assistant/Run';
 
     mw.loader.using(['mediawiki.api', 'oojs-ui']).then(function () {
