@@ -209,6 +209,10 @@
                 case 'checkbox':
                     $field = $('<span>');
                     var defs = Array.isArray(q.default) ? q.default : (q.default ? [q.default] : []);
+                    // Add initial line break for vertical layout
+                    if (q.vertical) {
+                        $field.append('<br>');
+                    }
                     (q.options || []).forEach(function (opt) {
                         var $l = $('<label>');
                         var $cb = $('<input>').attr({ type: 'checkbox', name: safeName, value: opt });
