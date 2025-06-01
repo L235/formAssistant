@@ -12,7 +12,7 @@
 
     Object‑key style:
     {
-      "Special:BlankPage/form": {
+      "Wikipedia:Form assistant/Run#demo": {
         "title": "Demo survey",
         "instructions": "Please fill the survey.",
         "targetPage": "Wikipedia:Sandbox",
@@ -53,7 +53,7 @@
         var fullPageTitle = mw.config.get('wgPageName').replace(/_/g, ' '); // keeps spaces
         var basePageTitle = fullPageTitle.split('#')[0]; // drop fragment if any
         if (basePageTitle !== ALLOWED_BASE_PAGE) {
-            console.log('[Form-assistant.js] Not on the permitted base page');
+            console.log('[form-assistant.js] Not on the permitted base page');
             return; // Silently exit – nothing to do here
         }
 
@@ -91,13 +91,13 @@
         }).then(function (data) {
             var page = data.query.pages[0];
             if (!page.revisions) {
-                console.error('[Form-assistant.js] Config page missing or empty');
+                console.error('[form-assistant.js] Config page missing or empty');
                 return;
             }
             var raw = page.revisions[0].content;
             var cfg;
             try { cfg = JSON.parse(raw); }
-            catch (e) { console.error('[Form-assistant.js] JSON parse error:', e); return; }
+            catch (e) { console.error('[form-assistant.js] JSON parse error:', e); return; }
 
             // Derive current page key, supporting #section fragments
             var pageTitle = mw.config.get('wgPageName').replace(/_/g, ' ');
@@ -107,7 +107,7 @@
             // Attempt exact match with fragment first, then without
             var formCfg = matchForm(cfg, currentFull) || matchForm(cfg, pageTitle);
             if (formCfg) renderForm(formCfg);
-        }).fail(function (err) { console.error('[Form-assistant.js] API error:', err); });
+        }).fail(function (err) { console.error('[form-assistant.js] API error:', err); });
 
         /* ---------- helper: find config for this page ---------------- */
         function matchForm(cfg, page) {
@@ -205,7 +205,7 @@
                     });
                     break;
                 default:
-                    console.warn('[Form-assistant.js] Unsupported field type:', q.type);
+                    console.warn('[form-assistant.js] Unsupported field type:', q.type);
                     return;
             }
 
@@ -289,7 +289,7 @@
             var editParams = {
                 action: 'edit',
                 title: targetPage,
-                summary: cfg.editSummary || 'Post answers via [[Mediawiki:Form-assistant.js|Form-assistant.js]]'
+                summary: cfg.editSummary || 'Post answers via [[Mediawiki:form-assistant.js|form-assistant.js]]'
             };
             
             if (cfg.prepend) {
