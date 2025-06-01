@@ -48,7 +48,7 @@
     var CONFIG_PAGE = 'Mediawiki:Form-assistant.js/config.json';
     var ALLOWED_BASE_PAGE = 'Wikipedia:Form assistant/Run';
 
-    mw.loader.using(['mediawiki.api', 'oojs-ui']).then(function () {
+    mw.loader.using(['mediawiki.api', 'oojs-ui', 'mediawiki.ui.button']).then(function () {
         // Abort early if not on the permitted base page
         var fullPageTitle = mw.config.get('wgPageName').replace(/_/g, ' '); // keeps spaces
         var basePageTitle = fullPageTitle.split('#')[0]; // drop fragment if any
@@ -118,6 +118,12 @@
 
         /* ---------- 2. Render form ----------------------------------- */
         function renderForm(cfg) {
+            /* ---------- 0. Inject author‑supplied CSS --------------- */
+            if (cfg.customCSS) {
+                // cfg.customCSS is a raw CSS string – load it once per form
+                mw.util.addCSS(cfg.customCSS);
+            }
+
             $('#firstHeading').empty();
             var $content = $('#mw-content-text').empty();
             if (cfg.title) $content.append($('<h2>').text(cfg.title));
@@ -133,12 +139,25 @@
             }
 
             Promise.all(promises).then(function () {
-                var $form = $('<form>').appendTo($content);
+                /* ---------- 1. Wrapper for whole form -------------- */
+                var $formWrapper = $('<div>')
+                    .addClass('fa-form-wrapper')
+                    .appendTo($content);
+
+                var $form = $('<form>')
+                    .addClass('fa-form')
+                    .appendTo($formWrapper);
+
                 (cfg.questions || []).forEach(function (q) { insertItem($form, q); });
 
-                // Removed extra <br> before submit to tighten spacing
-                var $submit = $('<input>').attr({ type: 'submit', value: 'Submit' });
+                /* ---------- 2. Pretty blue submit button ----------- */
+                var $submit = $('<button>')
+                    .addClass('mw-ui-button mw-ui-progressive fa-submit')
+                    .attr('type', 'submit')
+                    .text('Submit');
+
                 $form.append($submit);
+
                 $form.on('submit', function (e) {
                     e.preventDefault();
                     submit($form, cfg, $submit);
@@ -152,19 +171,24 @@
 
             switch (q.type) {
                 case 'heading':
-                    $form.append($('<h3>').text(q.text));
+                    $form.append($('<h3>').addClass('fa-heading').text(q.text));
                     return;
                 case 'static':
                 case 'html':
-                    var $ph = $('<div class="formassistant-placeholder"></div>');
+                    var $ph = $('<div class="formassistant-placeholder fa-static"></div>');
                     $form.append($ph); // preserves ordering
                     parseWikitext(q.html || q.text || '').then(function (html) {
-                        $ph.replaceWith($(html));
+                        // Ensure final output retains styling class
+                        $ph.replaceWith($(html).addClass('fa-static'));
                     });
                     return;
             }
 
-            var $label = $('<label>').text(q.label + (q.required ? ' (required)' : ''));
+            var $wrapper = $('<div>').addClass('fa-question');
+
+            var $label = $('<label>')
+                .addClass('fa-question-label')
+                .text(q.label + (q.required ? ' (required)' : ''));
             var $field;
 
             switch (q.type) {
@@ -221,8 +245,8 @@
                 $label.attr('id', fieldId + '_lbl');
             }
 
-            // Insert a space between the question label and field for visual clarity
-            $form.append($label.append(' ', $field)).append('<br><br>');
+            $wrapper.append($label, ' ', $field.addClass('fa-question-input'));
+            $form.append($wrapper);
         }
 
         /* ---------- helper: resolve target page variables ----------- */
