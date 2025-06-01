@@ -68,7 +68,8 @@
                 action: 'parse',
                 text: wt || '',
                 contentmodel: 'wikitext',
-                wrapoutputclass: ''
+                wrapoutputclass: '',
+                disableeditsection: true, // suppress [edit] links inside parsed headings
             }).then(function (d) {
                 return d.parse.text['*'];
             }).catch(function () {
