@@ -1,13 +1,21 @@
-/*  **JSON schema (examples)**
+/*  [[Mediawiki:Form-assistant.js]]
+    @author: L235 (https://en.wikipedia.org/wiki/User:L235)
+
+    This script is a form assistant that allows users to submit forms on Wikipedia pages, 
+    the answers to which are then posted to a target page.
+
+    Data is stored in a JSON file found at [[Mediawiki:Form-assistant.js/config.json]].
+
+    **JSON schema (examples)**
 
     Object‑key style:
     {
       "Special:BlankPage/form": {
         "title": "Demo survey",
-        "instructions": "Please fill the survey. Fields marked required.",
-        "targetPage": "User:L235/sandbox2",
+        "instructions": "Please fill the survey.",
+        "targetPage": "Wikipedia:Sandbox",
         "prepend": false,
-        "template": { "name": "User:L235/TestTemplate", "subst": true },
+        "template": { "name": "Template:Example", "subst": true },
         "questions": [
           { "label": "Question A", "type": "text", "templateParam": "1", "default": "foo" },
           { "label": "Question B", "type": "textarea", "required": true, "templateParam": "2" },
@@ -16,7 +24,7 @@
           { "label": "Question D", "type": "checkbox", "options": ["cats", "dogs"], "templateParam": "4", "default": ["cats"] },
           { "label": "Question E", "type": "radio", "options": ["noun", "verb"], "required": true, "templateParam": "5", "default": "verb" },
           { "label": "Section title", "type": "text", "required": true, "templateParam": "6" },
-          { "type": "static", "html": "''Thanks for participating!''" }
+          { "type": "static": "''Thanks for participating!''" }
         ]
       }
     }
@@ -36,19 +44,6 @@
 /* global mw, $ */
 (function () {
     var CONFIG_PAGE = 'User:L235/form-config.json';
-
-    // ------------------------------------------------------------------
-    // Cross‑browser CSS.escape polyfill (only if missing)
-    if (!window.CSS || !CSS.escape) {
-        (function (global) {
-            var ESC_RE = /[\0-\u001F\u007F-\u009F\u00A0-\uFFFF]/g;
-            var REPL = function (c) { return '\\' + c.charCodeAt(0).toString(16) + ' '; };
-            global.CSS = global.CSS || {};
-            global.CSS.escape = function (val) {
-                return String(val).replace(ESC_RE, REPL).replace(/^(?:-?\d)/, '\\$&');
-            };
-        })(window);
-    }
 
     mw.loader.using(['mediawiki.api', 'oojs-ui']).then(function () {
         var api = new mw.Api();
@@ -84,18 +79,18 @@
         }).then(function (data) {
             var page = data.query.pages[0];
             if (!page.revisions) {
-                console.error('[formFiller.js] Config page missing or empty');
+                console.error('[Form-assistant.js] Config page missing or empty');
                 return;
             }
             var raw = page.revisions[0].content;
             var cfg;
             try { cfg = JSON.parse(raw); }
-            catch (e) { console.error('[formFiller.js] JSON parse error:', e); return; }
+            catch (e) { console.error('[Form-assistant.js] JSON parse error:', e); return; }
 
             var current = mw.config.get('wgPageName').replace(/_/g, ' ');
             var formCfg = matchForm(cfg, current);
             if (formCfg) renderForm(formCfg);
-        }).fail(function (err) { console.error('[formFiller.js] API error:', err); });
+        }).fail(function (err) { console.error('[Form-assistant.js] API error:', err); });
 
         /* ---------- helper: find config for this page ---------------- */
         function matchForm(cfg, page) {
@@ -144,7 +139,7 @@
                     return;
                 case 'static':
                 case 'html':
-                    var $ph = $('<div class="formfiller-placeholder"></div>');
+                    var $ph = $('<div class="formassistant-placeholder"></div>');
                     $form.append($ph); // preserves ordering
                     parseWikitext(q.html || q.text || '').then(function (html) {
                         $ph.replaceWith($(html));
@@ -193,7 +188,7 @@
                     });
                     break;
                 default:
-                    console.warn('[formFiller.js] Unsupported field type:', q.type);
+                    console.warn('[Form-assistant.js] Unsupported field type:', q.type);
                     return;
             }
 
@@ -276,7 +271,7 @@
             var editParams = {
                 action: 'edit',
                 title: targetPage,
-                summary: cfg.editSummary || (cfg.prepend ? 'Prepend answers via [[User:L235/formFiller.js|formFiller.js]]' : 'Append answers via [[User:L235/formFiller.js|formFiller.js]]')
+                summary: cfg.editSummary || 'Post answers via [[Mediawiki:Form-assistant.js|Form-assistant.js]]'
             };
             
             if (cfg.prepend) {
