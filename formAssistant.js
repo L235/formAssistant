@@ -17,9 +17,10 @@
         "instructions": "Please fill the survey.",
         "targetPage": "Wikipedia:Sandbox",
         "prepend": false,
+        "preview": true,
         "template": { "name": "Template:Example", "subst": true },
         "questions": [
-          { "label": "Question A", "type": "text", "templateParam": "1", "default": "foo" },
+          { "label": "Question A", "type": "text", "templateParam": "1", "default": "foo", "preview": true },
           { "label": "Question B", "type": "textarea", "required": true, "templateParam": "2" },
           { "type": "heading", "text": "Choices" },
           { "label": "Question C", "type": "dropdown", "options": ["apples", "bananas"], "templateParam": "3", "default": "bananas" },
@@ -37,6 +38,8 @@
     
     **Form options:**
     - "prepend": true/false - Whether to prepend (true) or append (false, default) to target page
+    - "preview": true/false - Toggle full‑form preview area at bottom of form
+      (individual questions may set "preview": true for live field preview)
     
     Examples:
     - "targetPage": "User talk:{{USERNAME}}" - Posts to current user's talk page
@@ -61,6 +64,25 @@
 
         /* ---------- internal‑field counter ------------------------ */
         var mfCounter = 0;
+
+        /* ---------- helper: debounce ------------------------------ */
+        function debounce(fn, wait) {
+            var t;
+            return function () {
+                var ctx = this, args = arguments;
+                clearTimeout(t);
+                t = setTimeout(function () { fn.apply(ctx, args); }, wait);
+            };
+        }
+
+        /* ---------- helper: build wikitext from answers -------------- */
+        function buildWikitext($form, cfg) {
+            var params = (cfg.questions || []).filter(function (q) { return q.templateParam; })
+                .map(function (q) { return '|' + q.templateParam + '=' + encodeParam(valueOf($form, q)); }).join('');
+            var tpl = cfg.template.name || cfg.template;
+            if (cfg.template && cfg.template.subst) tpl = 'subst:' + tpl;
+            return '\n{{' + tpl + params + '}}\n';
+        }
 
         /* ---------- helper: parse wikitext -> safe HTML -------------- */
         function parseWikitext(wt) {
@@ -157,6 +179,30 @@
                     .text('Submit');
 
                 $form.append($submit);
+
+                /* ---------- 3. Optional full‑form preview ---------- */
+                var hasFormPreview = !!cfg.preview;
+                var $previewBtn, $previewArea;
+                if (hasFormPreview) {
+                    $previewBtn = $('<button>')
+                        .addClass('mw-ui-button fa-preview-btn')
+                        .attr('type', 'button')
+                        .css({ marginLeft: '8px' })
+                        .text('Preview');
+
+                    $previewArea = $('<div>')
+                        .addClass('fa-form-preview')
+                        .css({ border: '1px solid #a2a9b1', padding: '8px', marginTop: '8px' });
+
+                    $form.append($previewBtn, $previewArea);
+
+                    $previewBtn.on('click', function () {
+                        var wikitext = buildWikitext($form, cfg);
+                        parseWikitext(wikitext).then(function (html) {
+                            $previewArea.html(html);
+                        });
+                    });
+                }
 
                 $form.on('submit', function (e) {
                     e.preventDefault();
@@ -256,6 +302,24 @@
             }
 
             $wrapper.append($label, ' ', $field.addClass('fa-question-input'));
+
+            /* ---------- per‑question live preview ---------------- */
+            if (q.preview && ['text', 'textarea'].includes(q.type)) {
+                var $qPrev = $('<div>')
+                    .addClass('fa-field-preview')
+                    .css({ border: '1px solid #c8ccd1', padding: '4px', marginTop: '4px' });
+
+                var updateFieldPreview = debounce(function () {
+                    var val = ($field.val() || '').trim();
+                    if (!val) { $qPrev.empty(); return; }
+                    parseWikitext(val).then(function (html) { $qPrev.html(html); });
+                }, 500);
+                $field.on('input', updateFieldPreview);
+                // Initial preview if default present
+                updateFieldPreview();
+                $wrapper.append($qPrev);
+            }
+
             $form.append($wrapper);
         }
 
@@ -308,11 +372,7 @@
                 return;
             }
 
-            var params = (cfg.questions || []).filter(function (q) { return q.templateParam; })
-                .map(function (q) { return '|' + q.templateParam + '=' + encodeParam(valueOf($form, q)); }).join('');
-            var tpl = cfg.template.name || cfg.template;
-            if (cfg.template && cfg.template.subst) tpl = 'subst:' + tpl;
-            var wikitext = '\n{{' + tpl + params + '}}\n';
+            var wikitext = buildWikitext($form, cfg);
 
             // Resolve target page with variables
             var targetPage = resolveTargetPage(cfg.targetPage, formData);
