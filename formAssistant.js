@@ -39,6 +39,10 @@
     **Form options:**
     - "prepend": true/false - Whether to prepend (true) or append (false, default) to target page
     - "preview": true/false - Toggle full‑form preview area at bottom of form
+      Values (form‑wide or per‑question):
+        • "none"   – (default) no preview
+        • "live"   – live preview that updates as you type
+        • "button" – adds a preview button (form bottom or just after the question)
       (individual questions may set "preview": true for live field preview)
     
     Examples:
@@ -64,6 +68,12 @@
 
         /* ---------- internal‑field counter ------------------------ */
         var mfCounter = 0;
+
+        /* ---------- helper: preview‑mode coercion ------------------ */
+        function normalizePreviewMode(v) {
+            if (v === 'live' || v === 'button' || v === 'none') return v;
+            return 'none';
+        }
 
         /* ---------- helper: debounce ------------------------------ */
         // Returns a function that delays invoking the provided function until after
@@ -185,9 +195,10 @@
                 $form.append($submit);
 
                 /* ---------- 3. Optional full‑form preview ---------- */
-                var hasFormPreview = !!cfg.preview;
+                var formPreviewMode = normalizePreviewMode(cfg.preview);
                 var $previewBtn, $previewArea;
-                if (hasFormPreview) {
+
+                if (formPreviewMode !== 'none') {
                     $previewBtn = $('<button>')
                         .addClass('mw-ui-button fa-preview-btn')
                         .attr('type', 'button')
@@ -198,14 +209,27 @@
                         .addClass('fa-form-preview')
                         .css({ border: '1px solid #a2a9b1', padding: '8px', marginTop: '8px' });
 
-                    $form.append($previewBtn, $previewArea);
-
-                    $previewBtn.on('click', function () {
-                        var wikitext = buildWikitext($form, cfg);
-                        parseWikitext(wikitext).then(function (html) {
-                            $previewArea.html(html);
+                    // Insert elements
+                    if (formPreviewMode === 'button') {
+                        $form.append($previewBtn, $previewArea);
+                        $previewBtn.on('click', function () {
+                            var wikitext = buildWikitext($form, cfg);
+                            parseWikitext(wikitext).then(function (html) {
+                                $previewArea.html(html);
+                            });
                         });
-                    });
+                    } else { // live
+                        $form.append($previewArea);
+                        var updateFormPreview = debounce(function () {
+                            var wikitext = buildWikitext($form, cfg);
+                            parseWikitext(wikitext).then(function (html) {
+                                $previewArea.html(html);
+                            });
+                        }, 500);
+                        // listen to *all* inputs in the form
+                        $form.on('input change', 'input, textarea, select', updateFormPreview);
+                        updateFormPreview(); // initial render (includes defaults)
+                    }
                 }
 
                 $form.on('submit', function (e) {
@@ -308,28 +332,31 @@
             $wrapper.append($label, ' ', $field.addClass('fa-question-input'));
 
             /* ---------- per‑question live preview ---------------- */
-            if (q.preview && ['text', 'textarea'].includes(q.type)) {
-                // Create a preview container with consistent styling
+            var qPrevMode = normalizePreviewMode(q.preview);
+
+            if (qPrevMode !== 'none' && ['text', 'textarea'].includes(q.type)) {
                 var $qPrev = $('<div>')
                     .addClass('fa-field-preview')
                     .css({ border: '1px solid #c8ccd1', padding: '4px', marginTop: '4px' });
 
-                // Create a debounced update function to prevent excessive API calls
-                // The 500ms delay means we only update the preview after the user
-                // has stopped typing for half a second
                 var updateFieldPreview = debounce(function () {
                     var val = ($field.val() || '').trim();
                     if (!val) { $qPrev.empty(); return; }
                     parseWikitext(val).then(function (html) { $qPrev.html(html); });
                 }, 500);
 
-                // Bind the debounced update to input events
-                $field.on('input', updateFieldPreview);
-                
-                // Show initial preview if field has a default value
-                updateFieldPreview();
-                
-                $wrapper.append($qPrev);
+                if (qPrevMode === 'live') {
+                    $field.on('input', updateFieldPreview);
+                    updateFieldPreview(); // initial render
+                    $wrapper.append($qPrev);
+                } else { // button
+                    var $btnPrev = $('<button>')
+                        .addClass('mw-ui-button fa-q-preview-btn')
+                        .attr('type', 'button')
+                        .text('Preview');
+                    $btnPrev.on('click', updateFieldPreview);
+                    $wrapper.append(' ', $btnPrev, $qPrev);
+                }
             }
 
             $form.append($wrapper);
