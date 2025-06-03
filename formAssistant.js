@@ -17,6 +17,10 @@
         "instructions": "Please fill the survey.",
         "targetPage": "Wikipedia:Sandbox",
         "prepend": false,
+        "onComplete": "Wikipedia:Thank‑you"       – simple string -> redirect
+          // or: { "redirectPage": "Wikipedia:Foo" }
+          // or: { "text": "''Thanks!''" }   – show wikitext message
+          // or: { "html": "<b>Thanks!</b>" } – show raw HTML (use with care)
         "preview": "button",
         "template": { "name": "Template:Example", "subst": true },
         "questions": [
@@ -433,6 +437,33 @@
             }
             
             api.postWithToken('csrf', editParams).done(function () {
+                /* ---------- post‑submit action ------------------ */
+                function replaceFormWithMessage() {
+                    // Clear entire content area and inject parsed message
+                    var $content = $('#mw-content-text').empty();
+                    parseWikitext(cfg.onComplete.html || cfg.onComplete.text || '')
+                        .then(function (html) { $content.append($(html)); });
+                }
+
+                if (cfg.onComplete) {
+                    // 1. Simple string → redirect
+                    if (typeof cfg.onComplete === 'string') {
+                        window.location.href = mw.util.getUrl(cfg.onComplete);
+                        return;
+                    }
+                    // 2. Explicit redirect object
+                    if (cfg.onComplete.redirectPage) {
+                        window.location.href = mw.util.getUrl(cfg.onComplete.redirectPage);
+                        return;
+                    }
+                    // 3. Static/html message
+                    if (cfg.onComplete.text || cfg.onComplete.html) {
+                        replaceFormWithMessage();
+                        return;
+                    }
+                }
+
+                // Default behaviour if no onComplete directive
                 mw.notify('Saved!', { type: 'success' });
                 $form[0].reset();
             }).fail(function (err) {
