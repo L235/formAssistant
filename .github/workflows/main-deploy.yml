@@ -28,6 +28,25 @@ jobs:
           BOT_NAME: ${{ secrets.BOT_NAME }}
           BOT_PASS: ${{ secrets.BOT_PASS }}
         run: |
+          # 1\) Bot password credentials
+          echo "('L235', BotPassword('${BOT_NAME}', '${BOT_PASS}'))" > user-password.py
+          chmod 600 user-password.py
+
+          # 2\) Minimal Pywikibot user configuration
+          cat << 'EOF' > user-config.py
+          mylang = 'en'
+          family = 'wikipedia'
+          usernames['wikipedia']['en'] = 'L235'
+          password_file = 'user-password.py'
+          EOF
+          chmod 600 user-config.py
+
+          # 3\) Run the deploy script
+          python3 deploy.py \
+            --file formAssistant.js \
+            --branch main \
+            --target "MediaWiki:Form-assistant.js" \
+            --summary "Deploy revision [$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${GITHUB_SHA} ${GITHUB_SHA}]"
           echo "('L235', BotPassword('${BOT_NAME}', '${BOT_PASS}'))" > user-password.py
           chmod 600 user-password.py
 
