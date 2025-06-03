@@ -84,7 +84,7 @@
             var params = (cfg.questions || []).filter(function (q) { return q.templateParam; })
                 .map(function (q) { return '|' + q.templateParam + '=' + encodeParam(valueOf($form, q)); }).join('');
             var tpl = cfg.template.name || cfg.template;
-            if (cfg.template && cfg.template.subst) tpl = 'subst:' + tpl;
+            if (cfg.template && cfg.template.subst) tpl = 'safesubst:' + tpl;
             return '\n{{' + tpl + params + '}}\n';
         }
 
