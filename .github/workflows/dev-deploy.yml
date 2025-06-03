@@ -1,0 +1,60 @@
+name: Deploy to Wikipedia (dev branch)
+
+on:
+  # Run on every push (merge) to the dev branch
+  push:
+    branches: [ dev ]
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          # Only pywikibot is needed to edit Wikipedia
+          pip install 'pywikibot>=9.0.0'
+
+      - name: Deploy to User:L235/formFiller.js (dev)
+        env:
+          BOT_NAME: ${{ secrets.BOT_NAME }}
+          BOT_PASS: ${{ secrets.BOT_PASS }}
+        run: |
+          # 1\) Bot password credentials
+          echo "('L235', BotPassword('${BOT_NAME}', '${BOT_PASS}'))" > user-password.py
+          chmod 600 user-password.py
+
+          # 2\) Minimal Pywikibot user configuration – avoids NoUsernameError
+          cat << 'EOF' > user-config.py
+          mylang = 'en'
+          family = 'wikipedia'
+          usernames['wikipedia']['en'] = 'L235'
+          password_file = 'user-password.py'
+          EOF
+          chmod 600 user-config.py
+
+          # 3\) Run the deploy script with dev‑specific arguments
+          python3 deploy.py \
+            --file formAssistant.js \
+            --branch dev \
+            --target "User:L235/formFiller.js" \
+            --summary "Dev deploy revision [$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${GITHUB_SHA} ${GITHUB_SHA}]"
+          # Configure bot password for pywikibot
+          echo "('L235', BotPassword('${BOT_NAME}', '${BOT_PASS}'))" > user-password.py
+          chmod 600 user-password.py
+
+          # Run the deploy script with dev‑specific arguments
+          python3 deploy.py \
+            --file formAssistant.js \
+            --branch dev \
+            --target "User:L235/formFiller.js" \
+            --summary "Dev deploy revision [$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${GITHUB_SHA} ${GITHUB_SHA}]"
