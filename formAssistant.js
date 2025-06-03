@@ -66,6 +66,10 @@
         var mfCounter = 0;
 
         /* ---------- helper: debounce ------------------------------ */
+        // Returns a function that delays invoking the provided function until after
+        // 'wait' milliseconds have elapsed since the last time it was invoked.
+        // This is particularly useful for rate-limiting events that occur in quick succession,
+        // such as input events during typing.
         function debounce(fn, wait) {
             var t;
             return function () {
@@ -305,18 +309,26 @@
 
             /* ---------- per‑question live preview ---------------- */
             if (q.preview && ['text', 'textarea'].includes(q.type)) {
+                // Create a preview container with consistent styling
                 var $qPrev = $('<div>')
                     .addClass('fa-field-preview')
                     .css({ border: '1px solid #c8ccd1', padding: '4px', marginTop: '4px' });
 
+                // Create a debounced update function to prevent excessive API calls
+                // The 500ms delay means we only update the preview after the user
+                // has stopped typing for half a second
                 var updateFieldPreview = debounce(function () {
                     var val = ($field.val() || '').trim();
                     if (!val) { $qPrev.empty(); return; }
                     parseWikitext(val).then(function (html) { $qPrev.html(html); });
                 }, 500);
+
+                // Bind the debounced update to input events
                 $field.on('input', updateFieldPreview);
-                // Initial preview if default present
+                
+                // Show initial preview if field has a default value
                 updateFieldPreview();
+                
                 $wrapper.append($qPrev);
             }
 
