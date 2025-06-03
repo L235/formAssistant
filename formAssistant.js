@@ -103,15 +103,18 @@
         }
 
         /* ---------- helper: parse wikitext -> safe HTML -------------- */
-        function parseWikitext(wt) {
-            return api.post({
+        function parseWikitext(wt, title) {
+            var params = {
                 action: 'parse',
                 text: wt || '',
-                pst: true,                     // expand ~~~~ and subst:... before parsing
+                pst: true,                     // expand ~~~~ and subst:… before parsing
                 contentmodel: 'wikitext',
                 wrapoutputclass: '',
-                disableeditsection: true, // suppress [edit] links inside parsed headings
-            }).then(function (d) {
+                disableeditsection: true      // suppress [edit] links inside parsed headings
+            };
+            if (title) params.title = title;  // give correct namespace context
+
+            return api.post(params).then(function (d) {
                 return d.parse.text['*'];
             }).catch(function () {
                 // Never inject raw fallback – escape instead
@@ -176,7 +179,7 @@
 
             var promises = [];
             if (cfg.instructions) {
-                promises.push(parseWikitext(cfg.instructions).then(function (html) { $content.append($(html)); }));
+                promises.push(parseWikitext(cfg.instructions, cfg.formPage).then(function (html) { $content.append($(html)); }));
             }
 
             Promise.all(promises).then(function () {
@@ -218,16 +221,20 @@
                     if (formPreviewMode === 'button') {
                         $form.append($previewBtn, $previewArea);
                         $previewBtn.on('click', function () {
-                            var wikitext = buildWikitext($form, cfg);
-                            parseWikitext(wikitext).then(function (html) {
+                            var formData   = collectFormData($form, cfg);
+                            var wikitext   = buildWikitext($form, cfg);
+                            var targetPage = resolveTargetPage(cfg.targetPage, formData);
+                            parseWikitext(wikitext, targetPage).then(function (html) {
                                 $previewArea.html(html);
                             });
                         });
                     } else { // live
                         $form.append($previewArea);
                         var updateFormPreview = debounce(function () {
-                            var wikitext = buildWikitext($form, cfg);
-                            parseWikitext(wikitext).then(function (html) {
+                            var formData   = collectFormData($form, cfg);
+                            var wikitext   = buildWikitext($form, cfg);
+                            var targetPage = resolveTargetPage(cfg.targetPage, formData);
+                            parseWikitext(wikitext, targetPage).then(function (html) {
                                 $previewArea.html(html);
                             });
                         }, 500);
@@ -256,10 +263,11 @@
                 case 'html':
                     var $ph = $('<div class="formassistant-placeholder fa-static"></div>');
                     $form.append($ph); // preserves ordering
-                    parseWikitext(q.html || q.text || '').then(function (html) {
-                        // Ensure final output retains styling class
-                        $ph.replaceWith($(html).addClass('fa-static'));
-                    });
+                    parseWikitext(q.html || q.text || '', q.formPage)
+                        .then(function (html) {
+                            // Ensure final output retains styling class
+                            $ph.replaceWith($(html).addClass('fa-static'));
+                        });
                     return;
             }
 
@@ -347,7 +355,7 @@
                 var updateFieldPreview = debounce(function () {
                     var val = ($field.val() || '').trim();
                     if (!val) { $qPrev.empty(); return; }
-                    parseWikitext(val).then(function (html) { $qPrev.html(html); });
+                    parseWikitext(val, q.formPage).then(function (html) { $qPrev.html(html); });
                 }, 500);
 
                 if (qPrevMode === 'live') {
@@ -395,14 +403,18 @@
             }
         }
 
+        /* ---------- helper: collect form data ----------------------- */
+        function collectFormData($form, cfg) {
+            var data = {};
+            (cfg.questions || []).forEach(function (q) {
+                if (q.templateParam) data[q.templateParam] = valueOf($form, q);
+            });
+            return data;
+        }
+
         function submit($form, cfg, $submit) {
             // Collect all form data for target page resolution
-            var formData = {};
-            (cfg.questions || []).forEach(function (q) {
-                if (q.templateParam) {
-                    formData[q.templateParam] = valueOf($form, q);
-                }
-            });
+            var formData = collectFormData($form, cfg);
 
             // Custom validation for required checkbox groups
             var missing = (cfg.questions || []).filter(function (q) {
@@ -441,7 +453,7 @@
                 function replaceFormWithMessage() {
                     // Clear entire content area and inject parsed message
                     var $content = $('#mw-content-text').empty();
-                    parseWikitext(cfg.onComplete.html || cfg.onComplete.text || '')
+                    parseWikitext(cfg.onComplete.html || cfg.onComplete.text || '', cfg.formPage)
                         .then(function (html) { $content.append($(html)); });
                 }
 
