@@ -107,7 +107,7 @@
             return api.post({
                 action: 'parse',
                 text: wt || '',
-                pst: true,                     // expand ~~~~ and subst:... before parsing
+                pst: true,                // expand templates
                 contentmodel: 'wikitext',
                 wrapoutputclass: '',
                 disableeditsection: true, // suppress [edit] links inside parsed headings
