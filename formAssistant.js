@@ -1,3 +1,4 @@
+// <nowiki>
 /*  [[Mediawiki:Form-assistant.js]]
     @author: L235 ([[User:L235]])
 
@@ -487,3 +488,5 @@
         }
     });
 })();
+
+// </nowiki>
