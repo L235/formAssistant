@@ -37,6 +37,21 @@
       }
     }
 
+    **Form Flow and Conditional Visibility**
+    Questions can be conditionally shown/hidden based on answers to other questions:
+    {
+      "label": "Describe your pet",
+      "type": "textarea",
+      "templateParam": "PET_DESC",
+      "required": true,
+      "visibleIf": { "field": "PET_HAS", "value": "Yes" }
+    }
+    
+    The visibleIf rule supports:
+    - field: references either templateParam or internal field name
+    - value: string or array of strings to match against
+    - Hidden fields are automatically disabled and excluded from validation
+    
     **Target page variables:**
     - {{USERNAME}} - Current user's username
     - {{FIELD:templateParam}} - Value from form field (use templateParam as identifier)
