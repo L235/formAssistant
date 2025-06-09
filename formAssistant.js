@@ -279,28 +279,28 @@
                     q._$wrapper = $('<h3>')
                         .addClass('fa-heading')
                         .text(q.text)
+                        .toggle(!q.visibleIf)   /* hide now if conditional */
                         .appendTo($form);
                     return;
                 case 'static':
                 case 'html':
-                    /* place synchronous placeholder so visibility can act immediately */
                     var $ph = $('<div class="formassistant-placeholder fa-static"></div>');
-                    q._$wrapper = $ph;            /* <- make wrapper available right now */
-                    $form.append($ph);            /* preserves ordering */
+                    if (q.visibleIf) $ph.hide();       /* hide placeholder now */
+                    $form.append($ph);                 // preserves ordering
                     parseWikitext(q.html || q.text || '', q.formPage)
                         .then(function (html) {
                             // Ensure final output retains styling class
-                            var $final   = $(html).addClass('fa-static');
-                            /* keep whatever visibility state the placeholder had */
-                            if (!$ph.is(':visible')) { $final.hide(); }
-
-                            q._$wrapper = $final;  /* swap to real wrapper */
+                            var $final = $(html).addClass('fa-static');
+                            if (q.visibleIf) $final.hide();   /* keep hidden */
+                            q._$wrapper = $final;
                             $ph.replaceWith($final);
                         });
                     return;
             }
 
-            var $wrapper = $('<div>').addClass('fa-question');
+            var $wrapper = $('<div>')
+                .addClass('fa-question')
+                .toggle(!q.visibleIf);   /* hide now if conditional */
 
             var $label = $('<label>')
                 .addClass('fa-question-label')
@@ -435,13 +435,6 @@
                     $w.hide().find('input,select,textarea').prop('disabled', true);
                 }
             }
-
-            /* -- ensure items *without* visibleIf start visible -------- */
-            (cfg.questions || []).forEach(function (q) {
-                if (!q.visibleIf && q._$wrapper) {
-                    setVisible(q._$wrapper, true);
-                }
-            });
 
             (cfg.questions || []).forEach(function (q) {
                 if (!q.visibleIf) return; // nothing to do
