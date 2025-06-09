@@ -195,7 +195,10 @@
 
                 (cfg.questions || []).forEach(function (q) { insertItem($form, q); });
 
-                /* ---------- 2. Pretty blue submit button ----------- */
+                /* ---------- 2a. Conditional visibility ------------ */
+                attachVisibilityHandlers($form, cfg);
+
+                /* ---------- 3. Pretty blue submit button ----------- */
                 var $submit = $('<button>')
                     .addClass('mw-ui-button mw-ui-progressive fa-submit')
                     .attr('type', 'submit')
@@ -203,7 +206,7 @@
 
                 $form.append($submit);
 
-                /* ---------- 3. Optional full‑form preview ---------- */
+                /* ---------- 4. Optional full‑form preview ---------- */
                 var formPreviewMode = normalizePreviewMode(cfg.preview);
                 var $previewBtn, $previewArea;
 
@@ -258,7 +261,10 @@
 
             switch (q.type) {
                 case 'heading':
-                    $form.append($('<h3>').addClass('fa-heading').text(q.text));
+                    q._$wrapper = $('<h3>')
+                        .addClass('fa-heading')
+                        .text(q.text)
+                        .appendTo($form);
                     return;
                 case 'static':
                 case 'html':
@@ -267,7 +273,9 @@
                     parseWikitext(q.html || q.text || '', q.formPage)
                         .then(function (html) {
                             // Ensure final output retains styling class
-                            $ph.replaceWith($(html).addClass('fa-static'));
+                            var $final = $(html).addClass('fa-static');
+                            q._$wrapper = $final;
+                            $ph.replaceWith($final);
                         });
                     return;
             }
@@ -345,6 +353,9 @@
 
             $wrapper.append($label, ' ', $field.addClass('fa-question-input'));
 
+            /* store for visibility rules */
+            q._$wrapper = $wrapper;
+
             /* ---------- per‑question live preview ---------------- */
             var qPrevMode = normalizePreviewMode(q.preview);
 
@@ -374,6 +385,57 @@
             }
 
             $form.append($wrapper);
+        }
+
+        /* ---------- helper: conditional visibility ------------------ */
+        function attachVisibilityHandlers($form, cfg) {
+            function resolveController(fieldRef) {
+                return (cfg.questions || []).find(function (qq) {
+                    return qq.templateParam === fieldRef || qq._fieldName === fieldRef;
+                });
+            }
+
+            /* evaluate a single rule */
+            function shouldShow(rule, ctrlVal) {
+                if (rule == null) return true; // no rule
+                /* rule: { field: "PARAM", value: "foo" } or value: ["a","b"] */
+                var expected = rule.value;
+                if (Array.isArray(expected)) {
+                    return expected.includes(ctrlVal);
+                }
+                return ctrlVal === expected;
+            }
+
+            /* set wrapper visibility + enable/disable underlying fields */
+            function setVisible($w, on) {
+                if (!$w) return;
+                if (on) {
+                    $w.show().find('input,select,textarea').prop('disabled', false);
+                } else {
+                    $w.hide().find('input,select,textarea').prop('disabled', true);
+                }
+            }
+
+            (cfg.questions || []).forEach(function (q) {
+                if (!q.visibleIf) return; // nothing to do
+
+                var rule  = q.visibleIf;
+                var ctrlQ = resolveController(rule.field);
+                if (!ctrlQ) {
+                    console.warn('[form‑assistant.js] visibleIf: controller not found for', rule);
+                    return;
+                }
+
+                var sel = '[name="' + ctrlQ._fieldName + '"]';
+                function update() {
+                    var v  = valueOf($form, ctrlQ);
+                    var ok = shouldShow(rule, v);
+                    setVisible(q._$wrapper, ok);
+                }
+
+                $form.on('change input', sel, update);
+                update(); // initial
+            });
         }
 
         /* ---------- helper: resolve target page variables ----------- */
@@ -420,6 +482,7 @@
             // Custom validation for required checkbox groups
             var missing = (cfg.questions || []).filter(function (q) {
                 if (!q.required) return false;
+                if (q._$wrapper && !q._$wrapper.is(':visible')) return false; // only if visible
                 var val = valueOf($form, q);
                 return !val; // empty string means nothing selected
             });
