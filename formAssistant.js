@@ -439,6 +439,13 @@
                 }
             }
 
+            /* -- ensure items *without* visibleIf start visible -------- */
+            (cfg.questions || []).forEach(function (q) {
+                if (!q.visibleIf && q._$wrapper) {
+                    setVisible(q._$wrapper, true);
+                }
+            });
+
             (cfg.questions || []).forEach(function (q) {
                 if (!q.visibleIf) return; // nothing to do
 
