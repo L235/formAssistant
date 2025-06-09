@@ -298,9 +298,6 @@
                             $ph.replaceWith($final);
                         });
                     return;
-                default:
-                    console.warn('[form-assistant.js] Unsupported field type:', q.type);
-                    return;
             }
 
             var $wrapper = $('<div>').addClass('fa-question');
