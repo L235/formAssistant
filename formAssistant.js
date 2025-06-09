@@ -283,15 +283,23 @@
                     return;
                 case 'static':
                 case 'html':
+                    /* place synchronous placeholder so visibility can act immediately */
                     var $ph = $('<div class="formassistant-placeholder fa-static"></div>');
-                    $form.append($ph); // preserves ordering
+                    q._$wrapper = $ph;            /* <- make wrapper available right now */
+                    $form.append($ph);            /* preserves ordering */
                     parseWikitext(q.html || q.text || '', q.formPage)
                         .then(function (html) {
                             // Ensure final output retains styling class
-                            var $final = $(html).addClass('fa-static');
-                            q._$wrapper = $final;
+                            var $final   = $(html).addClass('fa-static');
+                            /* keep whatever visibility state the placeholder had */
+                            if (!$ph.is(':visible')) { $final.hide(); }
+
+                            q._$wrapper = $final;  /* swap to real wrapper */
                             $ph.replaceWith($final);
                         });
+                    return;
+                default:
+                    console.warn('[form-assistant.js] Unsupported field type:', q.type);
                     return;
             }
 
