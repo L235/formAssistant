@@ -296,9 +296,6 @@
                             $ph.replaceWith($final);
                         });
                     return;
-                default:
-                    console.warn('[form-assistant.js] Unsupported field type:', q.type);
-                    return;
             }
 
             var $wrapper = $('<div>')
@@ -438,13 +435,6 @@
                     $w.hide().find('input,select,textarea').prop('disabled', true);
                 }
             }
-
-            /* -- ensure items *without* visibleIf start visible -------- */
-            (cfg.questions || []).forEach(function (q) {
-                if (!q.visibleIf && q._$wrapper) {
-                    setVisible(q._$wrapper, true);
-                }
-            });
 
             (cfg.questions || []).forEach(function (q) {
                 if (!q.visibleIf) return; // nothing to do
